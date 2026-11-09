@@ -1,4 +1,4 @@
-# Cluster Platform Repository — Engineer's Guide
+# Cluster Platform Repository Guide
 
 ## Purpose
 
