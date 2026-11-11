@@ -1,0 +1,48 @@
+
+name: Component Governance Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate-components:
+    name: Validate Protected Components
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout platform repository
+        uses: actions/checkout@v4
+        with:
+          path: platform
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Checkout trusted governance repository
+        uses: actions/checkout@v4
+        with:
+          repository: Techdad78/hub-cluster-management-governance
+          ref: f0d9264c709efa4ca9f6577a36c5b4e87a24c10d
+          path: governance
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: python -m pip install PyYAML==6.0.3
+
+      - name: Validate component governance
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          python governance/scripts/validate-structure.py \
+            --repo platform \
+            --base-ref "$BASE_SHA"
