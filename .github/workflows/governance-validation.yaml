@@ -27,7 +27,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Techdad78/hub-cluster-management-governance
-          ref: f0d9264c709efa4ca9f6577a36c5b4e87a24c10d
+          ref: fec6d39d749930b4dd1c65f630fa390795f81fca
           path: governance
           persist-credentials: false
 
