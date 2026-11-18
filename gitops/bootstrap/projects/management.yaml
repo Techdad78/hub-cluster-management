@@ -1,0 +1,25 @@
+
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+
+metadata:
+  name: management
+  namespace: openshift-gitops
+
+spec:
+  description: Management cluster platform configuration
+
+  sourceRepos:
+    - https://gitstash.aib.pri/scm/ocp/aib_ocp_cluster_configuration-prod.git
+
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: '*'
+
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+
+  namespaceResourceWhitelist:
+    - group: '*'
+      kind: '*'
