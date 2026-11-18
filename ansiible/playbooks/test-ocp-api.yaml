@@ -1,0 +1,72 @@
+
+---
+- name: Test OpenShift API Authentication
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    ocp_api_url: "{{ lookup('env', 'OCP_API_URL') }}"
+    ocp_username: "{{ lookup('env', 'OCP_USERNAME') }}"
+    ocp_password: "{{ lookup('env', 'OCP_PASSWORD') }}"
+    ocp_ca_cert: "{{ lookup('env', 'OCP_CA_CERT') }}"
+
+  tasks:
+    - name: Validate credential configuration
+      ansible.builtin.assert:
+        that:
+          - ocp_api_url | length > 0
+          - ocp_username | length > 0
+          - ocp_password | length > 0
+          - ocp_ca_cert | length > 0
+        fail_msg: "OpenShift API credential configuration is incomplete"
+      no_log: true
+
+    - name: Authenticate and verify OpenShift API access
+      block:
+        - name: Login to OpenShift
+          community.okd.openshift_auth:
+            host: "{{ ocp_api_url }}"
+            username: "{{ ocp_username }}"
+            password: "{{ ocp_password }}"
+            ca_cert: "{{ ocp_ca_cert }}"
+            validate_certs: true
+          register: ocp_auth
+          no_log: true
+
+        - name: Query default namespace
+          kubernetes.core.k8s_info:
+            host: "{{ ocp_api_url }}"
+            api_key: "{{ ocp_auth.openshift_auth.api_key }}"
+            ca_cert: "{{ ocp_ca_cert }}"
+            validate_certs: true
+            api_version: v1
+            kind: Namespace
+            name: default
+          register: namespace_info
+          no_log: true
+
+        - name: Verify API query succeeded
+          ansible.builtin.assert:
+            that:
+              - namespace_info.resources | length == 1
+              - namespace_info.resources[0].metadata.name == 'default'
+            fail_msg: "Failed to retrieve default namespace"
+
+        - name: Report successful connection
+          ansible.builtin.debug:
+            msg: "OpenShift API authentication and query successful"
+
+      always:
+        - name: Logout and revoke OAuth token
+          community.okd.openshift_auth:
+            host: "{{ ocp_api_url }}"
+            ca_cert: "{{ ocp_ca_cert }}"
+            validate_certs: true
+            state: absent
+            api_key: "{{ ocp_auth.openshift_auth.api_key }}"
+          when:
+            - ocp_auth is defined
+            - ocp_auth.openshift_auth is defined
+            - ocp_auth.openshift_auth.api_key is defined
+          no_log: true
