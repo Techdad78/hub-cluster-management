@@ -1,0 +1,33 @@
+---
+- name: Wait for root Application to become Synced and Healthy
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: Application
+    namespace: "{{ gitops_namespace }}"
+    name: management-root
+  register: root_app
+  until:
+    - root_app.resources | length == 1
+    - root_app.resources[0].status.sync.status | default('') == 'Synced'
+    - root_app.resources[0].status.health.status | default('') == 'Healthy'
+  retries: 60
+  delay: 10
+
+- name: Verify expected ApplicationSet was created
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1alpha1
+    kind: ApplicationSet
+    namespace: "{{ gitops_namespace }}"
+    name: management-operators
+  register: appset
+  until: appset.resources | length == 1
+  retries: 30
+  delay: 10
+
+- name: Report successful GitOps bootstrap handover
+  ansible.builtin.debug:
+    msg:
+      - "Bootstrap completed on {{ target_site }}"
+      - "Argo CD root management-root is Synced and Healthy"
+      - "ApplicationSet management-operators is present"
+      - "The generated operator Applications require separate readiness checks"

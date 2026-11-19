@@ -1,0 +1,98 @@
+---
+- name: Wait for the operator-created default Argo CD instance
+  kubernetes.core.k8s_info:
+    api_version: argoproj.io/v1beta1
+    kind: ArgoCD
+    namespace: "{{ gitops_namespace }}"
+    name: openshift-gitops
+  register: argocd_cr
+  until: argocd_cr.resources | length == 1
+  retries: 90
+  delay: 10
+
+# Merge only the intended setting; preserve the operator's other defaults.
+- name: Enable the Argo CD server route
+  kubernetes.core.k8s:
+    state: present
+    merge_type: merge
+    definition:
+      apiVersion: argoproj.io/v1beta1
+      kind: ArgoCD
+      metadata:
+        name: openshift-gitops
+        namespace: "{{ gitops_namespace }}"
+      spec:
+        server:
+          route:
+            enabled: true
+
+- name: Wait for Argo CD server readiness
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ gitops_namespace }}"
+    name: openshift-gitops-server
+  register: gitops_server
+  until:
+    - gitops_server.resources | length == 1
+    - gitops_server.resources[0].status.availableReplicas | default(0) | int >= 1
+  retries: 90
+  delay: 10
+
+- name: Wait for Argo CD repository server readiness
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ gitops_namespace }}"
+    name: openshift-gitops-repo-server
+  register: gitops_repo_server
+  until:
+    - gitops_repo_server.resources | length == 1
+    - gitops_repo_server.resources[0].status.availableReplicas | default(0) | int >= 1
+  retries: 90
+  delay: 10
+
+- name: Wait for Argo CD ApplicationSet controller readiness
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: "{{ gitops_namespace }}"
+    name: openshift-gitops-applicationset-controller
+  register: gitops_appset_controller
+  until:
+    - gitops_appset_controller.resources | length == 1
+    - gitops_appset_controller.resources[0].status.availableReplicas | default(0) | int >= 1
+  retries: 90
+  delay: 10
+
+- name: Wait for application controller readiness
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: StatefulSet
+    namespace: "{{ gitops_namespace }}"
+    name: openshift-gitops-application-controller
+  register: gitops_application_controller
+  until:
+    - gitops_application_controller.resources | length == 1
+    - gitops_application_controller.resources[0].status.readyReplicas | default(0) | int >= 1
+  retries: 90
+  delay: 10
+
+# This is a deliberately optional, high-privilege step.
+- name: Grant cluster-admin to GitOps application controller if approved
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: rbac.authorization.k8s.io/v1
+      kind: ClusterRoleBinding
+      metadata:
+        name: openshift-gitops-bootstrap-cluster-admin
+      roleRef:
+        apiGroup: rbac.authorization.k8s.io
+        kind: ClusterRole
+        name: cluster-admin
+      subjects:
+        - kind: ServiceAccount
+          name: openshift-gitops-argocd-application-controller
+          namespace: "{{ gitops_namespace }}"
+  when: gitops_grant_cluster_admin | bool
