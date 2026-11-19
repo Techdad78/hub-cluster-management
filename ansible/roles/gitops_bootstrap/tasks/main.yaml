@@ -1,0 +1,18 @@
+---
+- name: Validate runtime inputs and API access
+  ansible.builtin.import_tasks: preflight.yaml
+
+- name: Install the OpenShift GitOps Operator
+  ansible.builtin.import_tasks: install_operator.yaml
+
+- name: Verify and configure the default Argo CD instance
+  ansible.builtin.import_tasks: configure_instance.yaml
+
+- name: Configure private Bitbucket repository access
+  ansible.builtin.import_tasks: configure_repository.yaml
+
+- name: Apply AppProject and root Application
+  ansible.builtin.import_tasks: bootstrap_applications.yaml
+
+- name: Validate the GitOps handover
+  ansible.builtin.import_tasks: validate_handover.yaml

@@ -1,0 +1,34 @@
+---
+# Server TLS trust uses the Git hostname as its ConfigMap key.
+- name: Trust internal Bitbucket CA when provided
+  kubernetes.core.k8s:
+    state: present
+    merge_type: merge
+    definition:
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: argocd-tls-certs-cm
+        namespace: "{{ gitops_namespace }}"
+      data:
+        gitstash.aib.pri: "{{ bitbucket_ca_pem }}"
+  when: bitbucket_ca_pem | length > 0
+
+- name: Configure Argo CD private repository credentials
+  kubernetes.core.k8s:
+    state: present
+    definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: management-bitbucket-repository
+        namespace: "{{ gitops_namespace }}"
+        labels:
+          argocd.argoproj.io/secret-type: repository
+      type: Opaque
+      stringData:
+        type: git
+        url: "{{ gitops_repo_url }}"
+        username: "{{ bitbucket_username }}"
+        password: "{{ bitbucket_token }}"
+  no_log: true

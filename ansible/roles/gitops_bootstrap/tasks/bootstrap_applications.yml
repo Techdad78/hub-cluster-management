@@ -1,0 +1,10 @@
+---
+- name: Apply management AppProject from repository
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ repo_root }}/gitops/bootstrap/projects/management.yaml"
+
+- name: Apply site-specific root Application from repository
+  kubernetes.core.k8s:
+    state: present
+    src: "{{ repo_root }}/gitops/bootstrap/root-{{ target_site }}.yaml"
