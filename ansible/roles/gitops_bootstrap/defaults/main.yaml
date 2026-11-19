@@ -1,0 +1,12 @@
+---
+gitops_operator_channel: gitops-1.19
+gitops_install_plan_approval: Automatic
+
+gitops_operator_namespace: openshift-gitops-operator
+gitops_namespace: openshift-gitops
+
+gitops_repo_url: https://gitstash.aib.pri/scm/ocp/aib_ocp_cluster_configuration-prod.git
+
+gitops_grant_cluster_admin: false
+
+repo_root: "{{ playbook_dir }}/../.."
